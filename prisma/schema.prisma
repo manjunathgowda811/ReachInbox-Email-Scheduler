@@ -1,0 +1,260 @@
+// Prisma Schema for ReachInbox Email Scheduler
+// Database: PostgreSQL 15
+// ORM: Prisma 5
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Users & Authentication
+// ─────────────────────────────────────────────────────────────────────────────
+
+model User {
+  id              String    @id @default(cuid())
+  googleId        String    @unique @map("google_id")
+  email           String    @unique
+  name            String
+  avatarUrl       String?   @map("avatar_url")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  // Relations
+  sessions        Session[]
+  senders         Sender[]
+  schedules       EmailSchedule[]
+  slackIntegration SlackIntegration?
+
+  @@map("users")
+}
+
+model Session {
+  id        String   @id
+  userId    String   @map("user_id")
+  data      String   // JSON-serialized session data
+  expiresAt DateTime @map("expires_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("sessions")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Email Senders
+// ─────────────────────────────────────────────────────────────────────────────
+
+model Sender {
+  id                  String   @id @default(cuid())
+  userId              String   @map("user_id")
+  name                String
+  email               String
+  smtpHost            String   @map("smtp_host")
+  smtpPort            Int      @map("smtp_port")
+  smtpUser            String   @map("smtp_user")
+  smtpPassEncrypted   String   @map("smtp_pass_encrypted")
+  maxEmailsPerHour    Int      @default(200) @map("max_emails_per_hour")
+  minDelayMs          Int      @default(2000) @map("min_delay_ms")
+  isEthereal          Boolean  @default(true) @map("is_ethereal")
+  isActive            Boolean  @default(true) @map("is_active")
+  createdAt           DateTime @default(now()) @map("created_at")
+  updatedAt           DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  user          User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  schedules     EmailSchedule[]
+  emailJobs     EmailJob[]
+
+  @@unique([userId, email])
+  @@index([userId])
+  @@map("senders")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Email Schedules (campaigns)
+// ─────────────────────────────────────────────────────────────────────────────
+
+enum ScheduleStatus {
+  DRAFT
+  SCHEDULED
+  PROCESSING
+  COMPLETED
+  CANCELLED
+  FAILED
+}
+
+model EmailSchedule {
+  id                  String         @id @default(cuid())
+  userId              String         @map("user_id")
+  senderId            String         @map("sender_id")
+  subject             String
+  body                String         @db.Text
+  status              ScheduleStatus @default(SCHEDULED)
+  startAt             DateTime       @map("start_at")
+  totalRecipients     Int            @default(0) @map("total_recipients")
+  sentCount           Int            @default(0) @map("sent_count")
+  failedCount         Int            @default(0) @map("failed_count")
+  cancelledAt         DateTime?      @map("cancelled_at")
+  completedAt         DateTime?      @map("completed_at")
+  createdAt           DateTime       @default(now()) @map("created_at")
+  updatedAt           DateTime       @updatedAt @map("updated_at")
+
+  // Relations
+  user       User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sender     Sender      @relation(fields: [senderId], references: [id])
+  emailJobs  EmailJob[]
+
+  @@index([userId])
+  @@index([status])
+  @@index([startAt])
+  @@map("email_schedules")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Individual Email Jobs (one per recipient)
+// ─────────────────────────────────────────────────────────────────────────────
+
+enum EmailJobStatus {
+  PENDING
+  SCHEDULED
+  PROCESSING
+  SENT
+  FAILED
+  CANCELLED
+  RATE_LIMITED
+}
+
+model EmailJob {
+  id                String         @id @default(cuid())
+  scheduleId        String         @map("schedule_id")
+  senderId          String         @map("sender_id")
+  userId            String         @map("user_id")
+  recipientEmail    String         @map("recipient_email")
+  subject           String
+  body              String         @db.Text
+  status            EmailJobStatus @default(PENDING)
+  scheduledAt       DateTime       @map("scheduled_at")
+  processedAt       DateTime?      @map("processed_at")
+  sentAt            DateTime?      @map("sent_at")
+  failedAt          DateTime?      @map("failed_at")
+  attemptCount      Int            @default(0) @map("attempt_count")
+  lastError         String?        @map("last_error")
+  messageId         String?        @map("message_id")
+  etherealPreviewUrl String?       @map("ethereal_preview_url")
+  bullJobId         String?        @map("bull_job_id")
+  sequenceIndex     Int            @default(0) @map("sequence_index")
+  createdAt         DateTime       @default(now()) @map("created_at")
+  updatedAt         DateTime       @updatedAt @map("updated_at")
+
+  // Relations
+  schedule    EmailSchedule     @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
+  sender      Sender            @relation(fields: [senderId], references: [id])
+  attempts    DeliveryAttempt[]
+
+  @@unique([scheduleId, recipientEmail])
+  @@index([scheduleId])
+  @@index([senderId])
+  @@index([userId])
+  @@index([status])
+  @@index([scheduledAt])
+  @@index([bullJobId])
+  @@map("email_jobs")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Delivery Attempts (audit trail)
+// ─────────────────────────────────────────────────────────────────────────────
+
+model DeliveryAttempt {
+  id          String   @id @default(cuid())
+  emailJobId  String   @map("email_job_id")
+  attemptNum  Int      @map("attempt_num")
+  status      String   // 'success' | 'failed' | 'uncertain'
+  error       String?
+  messageId   String?  @map("message_id")
+  previewUrl  String?  @map("preview_url")
+  durationMs  Int?     @map("duration_ms")
+  attemptedAt DateTime @default(now()) @map("attempted_at")
+
+  emailJob EmailJob @relation(fields: [emailJobId], references: [id], onDelete: Cascade)
+
+  @@index([emailJobId])
+  @@map("delivery_attempts")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Slack Integration
+// ─────────────────────────────────────────────────────────────────────────────
+
+model SlackIntegration {
+  id                  String    @id @default(cuid())
+  userId              String    @unique @map("user_id")
+  teamId              String    @map("team_id")
+  teamName            String    @map("team_name")
+  channelId           String?   @map("channel_id")
+  channelName         String?   @map("channel_name")
+  accessTokenEncrypted String   @map("access_token_encrypted")
+  webhookUrlEncrypted  String?  @map("webhook_url_encrypted")
+  scope               String
+  botUserId           String?   @map("bot_user_id")
+  isActive            Boolean   @default(true) @map("is_active")
+  connectedAt         DateTime  @default(now()) @map("connected_at")
+  updatedAt           DateTime  @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("slack_integrations")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Notification Events (deduplication for Slack notifications)
+// ─────────────────────────────────────────────────────────────────────────────
+
+model NotificationEvent {
+  id          String   @id @default(cuid())
+  userId      String   @map("user_id")
+  senderId    String   @map("sender_id")
+  eventType   String   @map("event_type")  // 'rate_limit_reached'
+  windowKey   String   @map("window_key")   // e.g. 'sender_id:2024-01-15:14' (UTC hour)
+  sentAt      DateTime @default(now()) @map("sent_at")
+
+  @@unique([senderId, eventType, windowKey])
+  @@index([userId])
+  @@map("notification_events")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Outbox Events (transactional outbox for Elasticsearch sync)
+// ─────────────────────────────────────────────────────────────────────────────
+
+enum OutboxStatus {
+  PENDING
+  PROCESSING
+  DONE
+  FAILED
+}
+
+model OutboxEvent {
+  id           String      @id @default(cuid())
+  aggregateId  String      @map("aggregate_id")   // emailJobId
+  aggregateType String     @map("aggregate_type") // 'EmailJob'
+  eventType    String      @map("event_type")     // 'created' | 'updated'
+  payload      Json
+  status       OutboxStatus @default(PENDING)
+  attemptCount Int         @default(0) @map("attempt_count")
+  lastError    String?     @map("last_error")
+  processedAt  DateTime?   @map("processed_at")
+  createdAt    DateTime    @default(now()) @map("created_at")
+
+  @@index([status, createdAt])
+  @@index([aggregateId])
+  @@map("outbox_events")
+}

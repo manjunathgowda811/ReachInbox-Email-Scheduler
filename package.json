@@ -1,0 +1,51 @@
+{
+  "name": "reachinbox-scheduler",
+  "version": "1.0.0",
+  "private": true,
+  "description": "ReachInbox Email Scheduler - Production-quality full-stack email scheduling application",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "showcase": "node scripts/ensure-showcase-db.js && cross-env SHOWCASE_MODE=true concurrently \"npm run showcase:api\" \"npm run dev:web\"",
+    "showcase:api": "cross-env SHOWCASE_MODE=true DATABASE_URL=\"file:./showcase.db\" npm run dev --workspace=apps/api",
+    "showcase:db": "cross-env DATABASE_URL=\"file:./showcase.db\" prisma db push --schema=prisma/schema.sqlite.prisma",
+    "dev": "concurrently \"npm run dev --workspace=apps/api\" \"npm run dev --workspace=apps/worker\" \"npm run dev --workspace=apps/web\"",
+    "dev:api": "npm run dev --workspace=apps/api",
+    "dev:worker": "npm run dev --workspace=apps/worker",
+    "dev:web": "npm run dev --workspace=apps/web",
+    "build": "npm run build --workspaces",
+    "build:api": "npm run build --workspace=apps/api",
+    "build:worker": "npm run build --workspace=apps/worker",
+    "build:web": "npm run build --workspace=apps/web",
+    "start": "concurrently \"npm run start --workspace=apps/api\" \"npm run start --workspace=apps/worker\" \"npm run start --workspace=apps/web\"",
+    "db:generate": "prisma generate",
+    "db:migrate": "prisma migrate dev",
+    "db:migrate:deploy": "prisma migrate deploy",
+    "db:seed": "prisma db seed",
+    "db:studio": "prisma studio",
+    "db:reset": "prisma migrate reset --force",
+    "infra:up": "docker compose up -d",
+    "infra:down": "docker compose down",
+    "infra:logs": "docker compose logs -f",
+    "test": "npm run test --workspaces --if-present",
+    "test:api": "npm run test --workspace=apps/api",
+    "test:worker": "npm run test --workspace=apps/worker",
+    "lint": "npm run lint --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "format": "prettier --write \"**/*.{ts,tsx,js,json,md}\"",
+    "setup": "npm install && docker compose up -d && sleep 20 && npm run db:migrate:deploy"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2",
+    "cross-env": "^10.1.0",
+    "prettier": "^3.1.1",
+    "prisma": "^5.7.1",
+    "typescript": "^5.3.3"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=9.0.0"
+  }
+}
