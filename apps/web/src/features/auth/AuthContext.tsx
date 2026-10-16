@@ -63,6 +63,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       window.location.href = '/dashboard';
     } catch (err) {
       console.error('Dev login failed', err);
+      throw err;
     } finally {
       setLoading(false);
     }
