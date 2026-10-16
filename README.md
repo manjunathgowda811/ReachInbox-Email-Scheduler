@@ -2,6 +2,9 @@
 
 > A production-ready, distributed, full-stack email scheduling and bulk outreach platform engineered for high reliability, fault tolerance, rate limiting, and observability.
 
+🌐 **Live Vercel Web App:** [https://reachinbox-email-scheduler-eight-nu.vercel.app](https://reachinbox-email-scheduler-eight-nu.vercel.app)  
+📦 **GitHub Repository:** [https://github.com/manjunathgowda811/ReachInbox-Email-Scheduler](https://github.com/manjunathgowda811/ReachInbox-Email-Scheduler)
+
 ---
 
 ## Table of Contents
