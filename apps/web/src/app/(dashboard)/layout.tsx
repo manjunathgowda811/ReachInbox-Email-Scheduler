@@ -43,10 +43,13 @@ export default function DashboardLayout({
 
   if (loading) {
     return (
-      <div className="flex h-screen w-screen items-center justify-center bg-white">
-        <div className="flex flex-col items-center gap-3">
-          <div className="h-8 w-8 animate-spin rounded-full border-2 border-brand-500 border-t-transparent" />
-          <p className="text-sm text-gray-500">Authenticating…</p>
+      <div className="flex h-screen w-screen items-center justify-center bg-dark-950 text-gray-100">
+        <div className="flex flex-col items-center gap-4">
+          <div className="relative">
+            <div className="h-10 w-10 animate-spin rounded-full border-2 border-brand-500 border-t-transparent" />
+            <div className="absolute inset-0 rounded-full blur-md bg-brand-500/30 animate-pulse" />
+          </div>
+          <p className="text-xs font-mono text-gray-400 tracking-wider uppercase">Authenticating Cluster...</p>
         </div>
       </div>
     );
@@ -55,16 +58,20 @@ export default function DashboardLayout({
   if (!user) return null;
 
   return (
-    <div className="flex min-h-screen bg-gray-50">
+    <div className="flex min-h-screen bg-dark-950 text-gray-100 selection:bg-brand-500/30 font-sans">
       <Sidebar
         onOpenCompose={() => setIsComposeOpen(true)}
         scheduledCount={scheduledCount}
         sentCount={sentCount}
       />
 
-      <div className="flex-1 flex flex-col min-w-0">
+      <div className="flex-1 flex flex-col min-w-0 bg-[#070A12] relative overflow-hidden">
+        {/* Ambient background light gradients */}
+        <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-brand-600/5 rounded-full blur-[140px] pointer-events-none" />
+        <div className="absolute bottom-0 left-1/3 w-[600px] h-[400px] bg-brand-cyan/5 rounded-full blur-[160px] pointer-events-none" />
+
         <Header />
-        <main className="flex-1 p-8 overflow-y-auto">{children}</main>
+        <main className="flex-1 p-6 md:p-8 lg:p-10 overflow-y-auto relative z-10">{children}</main>
       </div>
 
       <ComposeModal

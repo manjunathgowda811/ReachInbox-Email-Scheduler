@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { slackApi } from '@/lib/api';
-import { Radio, CheckCircle, AlertCircle, Link as LinkIcon, RefreshCw, X, ShieldAlert } from 'lucide-react';
+import { Radio, CheckCircle2, AlertCircle, Link as LinkIcon, RefreshCw, X, ShieldAlert, Zap } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 export default function IntegrationsPage() {
@@ -23,7 +23,7 @@ export default function IntegrationsPage() {
       setStatus(statusData || { connected: false });
       setNotifications(notifsData || []);
     } catch {
-      toast.error('Failed to load integration data');
+      toast.error('Failed to load integration status');
     } finally {
       setLoading(false);
     }
@@ -42,7 +42,7 @@ export default function IntegrationsPage() {
     setSubmitting(true);
     try {
       await slackApi.connectWebhook({ webhookUrl, channelName });
-      toast.success('Slack webhook connected successfully!');
+      toast.success('Slack webhook registered successfully!');
       setWebhookUrl('');
       loadData();
     } catch (err: any) {
@@ -53,7 +53,7 @@ export default function IntegrationsPage() {
   };
 
   const handleDisconnect = async () => {
-    if (!confirm('Are you sure you want to disconnect Slack?')) return;
+    if (!confirm('Are you sure you want to disconnect Slack notifications?')) return;
     try {
       await slackApi.disconnect();
       toast.success('Slack integration disconnected');
@@ -64,85 +64,77 @@ export default function IntegrationsPage() {
   };
 
   return (
-    <div className="space-y-6 max-w-4xl mx-auto">
+    <div className="space-y-6 max-w-5xl mx-auto selection:bg-brand-500/30">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Slack Alert Integrations</h1>
-        <p className="text-sm text-gray-500 mt-1">
-          Receive real-time alerts whenever a sender hits their hourly limit and email jobs get rescheduled.
+        <div className="flex items-center gap-2 mb-1">
+          <span className="w-2 h-2 rounded-full bg-brand-emerald animate-pulse" />
+          <span className="text-[11px] font-mono uppercase tracking-widest text-emerald-400 font-semibold">
+            Real-Time Alerting
+          </span>
+        </div>
+        <h1 className="text-3xl font-extrabold text-white tracking-tight">
+          Slack Telemetry Integrations
+        </h1>
+        <p className="text-xs md:text-sm text-gray-400 mt-1">
+          Automate instant incident alerts whenever a sender identity hits their hourly rate limit.
         </p>
       </div>
 
       {/* Connection Status Card */}
-      <div className="p-6 bg-white rounded-2xl border border-gray-100 shadow-card flex items-center justify-between">
+      <div className="p-6 bg-dark-900 rounded-2xl border border-white/[0.08] shadow-card flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-center gap-4">
           <div
-            className={`w-12 h-12 rounded-2xl flex items-center justify-center ${
+            className={`w-12 h-12 rounded-xl flex items-center justify-center border ${
               status.connected
-                ? 'bg-green-50 text-green-600'
-                : 'bg-gray-100 text-gray-400'
+                ? 'bg-emerald-500/10 text-emerald-300 border-emerald-500/20'
+                : 'bg-white/[0.04] text-gray-400 border-white/[0.08]'
             }`}
           >
             <Radio className="w-6 h-6" />
           </div>
           <div>
-            <div className="flex items-center gap-2">
-              <h3 className="font-semibold text-gray-900 text-base">Slack Alerts</h3>
+            <div className="flex items-center gap-2.5">
+              <h3 className="font-bold text-white text-base">Slack Webhook Relay</h3>
               <span
-                className={`text-xs font-semibold px-2.5 py-0.5 rounded-full ${
+                className={`text-[10px] font-mono font-semibold px-2.5 py-0.5 rounded-full border ${
                   status.connected
-                    ? 'bg-green-50 text-green-700'
-                    : 'bg-gray-100 text-gray-600'
+                    ? 'bg-emerald-500/10 text-emerald-300 border-emerald-500/30'
+                    : 'bg-white/[0.05] text-gray-400 border-white/[0.08]'
                 }`}
               >
-                {status.connected ? 'Connected' : 'Not Connected'}
+                {status.connected ? 'Active • Relaying Alerts' : 'Disconnected'}
               </span>
             </div>
-            {status.connected ? (
-              <p className="text-xs text-gray-500 mt-0.5">
-                Channel: <span className="font-medium text-gray-800">{status.channelName || '#general'}</span> • Team:{' '}
-                <span className="font-medium text-gray-800">{status.teamName || 'Workspace'}</span>
-              </p>
-            ) : (
-              <p className="text-xs text-gray-500 mt-0.5">
-                Connect your Slack workspace via OAuth or an incoming webhook URL.
-              </p>
-            )}
+            <p className="text-xs text-gray-400 mt-0.5 font-mono">
+              Target Channel: {status.channelName || '#email-alerts'}
+            </p>
           </div>
         </div>
 
-        {status.connected ? (
+        {status.connected && (
           <button
             onClick={handleDisconnect}
-            className="px-4 py-2 text-xs font-semibold text-red-600 hover:bg-red-50 border border-red-200 rounded-xl transition-colors"
+            className="px-4 py-2 text-xs font-semibold text-rose-400 hover:text-rose-300 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/20 rounded-xl transition-all"
           >
-            Disconnect
+            Disconnect Relay
           </button>
-        ) : (
-          <a
-            href={slackApi.connectUrl}
-            className="px-4 py-2 text-xs font-semibold text-white bg-brand-500 hover:bg-brand-600 rounded-xl shadow-sm transition-all"
-          >
-            Connect via OAuth
-          </a>
         )}
       </div>
 
-      {/* Direct Incoming Webhook Option */}
+      {/* Connect Webhook Form */}
       {!status.connected && (
-        <div className="p-6 bg-white rounded-2xl border border-gray-100 shadow-card space-y-4">
-          <div>
-            <h3 className="font-semibold text-gray-900 text-base">
-              Quick Connect via Incoming Webhook URL
-            </h3>
-            <p className="text-xs text-gray-500 mt-1">
-              Test Slack notifications instantly without setting up a full Slack app OAuth flow.
+        <div className="p-6 bg-dark-900 rounded-2xl border border-white/[0.08] shadow-card space-y-4">
+          <div className="space-y-1">
+            <h3 className="text-base font-bold text-white">Connect Slack Incoming Webhook</h3>
+            <p className="text-xs text-gray-400">
+              Provide an Incoming Webhook URL configured in your Slack app directory.
             </p>
           </div>
 
-          <form onSubmit={handleWebhookConnect} className="space-y-4">
+          <form onSubmit={handleWebhookConnect} className="space-y-4 pt-2">
             <div>
-              <label className="block text-xs font-semibold text-gray-700 uppercase mb-1">
+              <label className="block text-xs font-mono font-semibold text-gray-300 uppercase tracking-wider mb-1">
                 Webhook URL
               </label>
               <input
@@ -151,96 +143,72 @@ export default function IntegrationsPage() {
                 value={webhookUrl}
                 onChange={(e) => setWebhookUrl(e.target.value)}
                 placeholder="https://hooks.slack.com/services/T.../B.../..."
-                className="w-full px-3 py-2 text-sm bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-500 font-mono text-xs"
+                className="w-full px-3.5 py-2.5 text-xs font-mono bg-dark-850 border border-white/[0.08] rounded-xl text-gray-100 placeholder-gray-500 focus:outline-none focus:border-brand-500"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-gray-700 uppercase mb-1">
-                Display Channel Name
+              <label className="block text-xs font-mono font-semibold text-gray-300 uppercase tracking-wider mb-1">
+                Channel Identifier
               </label>
               <input
                 type="text"
                 value={channelName}
                 onChange={(e) => setChannelName(e.target.value)}
                 placeholder="#email-alerts"
-                className="w-full px-3 py-2 text-sm bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-500"
+                className="w-full px-3.5 py-2.5 text-xs font-mono bg-dark-850 border border-white/[0.08] rounded-xl text-gray-100 placeholder-gray-500 focus:outline-none focus:border-brand-500"
               />
             </div>
 
-            <button
-              type="submit"
-              disabled={submitting}
-              className="px-5 py-2 text-xs font-semibold text-white bg-brand-500 hover:bg-brand-600 rounded-xl shadow-sm disabled:opacity-50"
-            >
-              {submitting ? 'Connecting…' : 'Save Webhook & Activate'}
-            </button>
+            <div className="pt-2">
+              <button
+                type="submit"
+                disabled={submitting}
+                className="flex items-center gap-2 px-5 py-2.5 text-xs font-semibold text-white bg-gradient-to-r from-brand-600 to-brand-500 hover:from-brand-500 hover:to-brand-400 rounded-xl shadow-glow transition-all active:scale-[0.98] border border-brand-400/30"
+              >
+                <LinkIcon className="w-3.5 h-3.5" />
+                <span>{submitting ? 'Authenticating Hook…' : 'Establish Slack Link'}</span>
+              </button>
+            </div>
           </form>
         </div>
       )}
 
-      {/* Information Box */}
-      <div className="p-5 rounded-2xl bg-brand-50 border border-brand-100 flex items-start gap-3">
-        <ShieldAlert className="w-5 h-5 text-brand-600 flex-shrink-0 mt-0.5" />
-        <div className="text-xs text-brand-900 space-y-1">
-          <p className="font-semibold">Per-Window Rate Limit Deduplication</p>
-          <p className="text-brand-800">
-            Slack notifications are automatically deduplicated so you only receive one alert per sender
-            per UTC hour window, even if hundreds of email jobs are rate-limited simultaneously.
-          </p>
-        </div>
-      </div>
-
-      {/* Rate Limit Notification Center / Simulation Feed */}
-      <div className="p-6 bg-white rounded-2xl border border-gray-100 shadow-card space-y-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <h3 className="font-semibold text-gray-900 text-base">Rate Limit Notification Feed</h3>
-            <p className="text-xs text-gray-500 mt-0.5">
-              History of sender quota alerts dispatched to Slack or recorded locally in Showcase Mode.
-            </p>
+      {/* Alert Audit Trail */}
+      <div className="bg-dark-900 rounded-2xl border border-white/[0.08] shadow-card overflow-hidden">
+        <div className="px-6 py-4 border-b border-white/[0.07] flex items-center justify-between bg-dark-950/60">
+          <div className="flex items-center gap-2">
+            <ShieldAlert className="w-4 h-4 text-amber-400" />
+            <h3 className="font-bold text-white text-xs uppercase tracking-wider font-mono">
+              Rate Limit Incident Log
+            </h3>
           </div>
-          <button
-            onClick={loadData}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-gray-700 bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors"
-          >
-            <RefreshCw className="w-3.5 h-3.5" />
-            <span>Refresh</span>
-          </button>
+          <span className="text-[11px] font-mono text-gray-500">
+            {notifications.length} recent event{notifications.length === 1 ? '' : 's'}
+          </span>
         </div>
 
-        {notifications.length === 0 ? (
-          <div className="p-8 text-center bg-gray-50/70 rounded-xl border border-dashed border-gray-200">
-            <Radio className="w-8 h-8 text-gray-300 mx-auto mb-2" />
-            <p className="text-xs font-medium text-gray-500">No rate limit alerts recorded yet</p>
-            <p className="text-[11px] text-gray-400 mt-1">
-              Trigger a test by setting a low sender limit (e.g. 2 emails/hour in Senders tab) and scheduling a campaign.
-            </p>
-          </div>
-        ) : (
-          <div className="divide-y divide-gray-100">
-            {notifications.map((notif: any) => (
-              <div key={notif.id} className="py-3.5 first:pt-0 last:pb-0 space-y-1.5">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full bg-amber-500" />
-                    <span className="text-xs font-semibold text-gray-900">{notif.title}</span>
-                  </div>
-                  <span className="text-[11px] text-gray-400">
-                    {new Date(notif.sentAt).toLocaleString()}
-                  </span>
+        <div className="divide-y divide-white/[0.04]">
+          {notifications.length === 0 ? (
+            <div className="py-12 px-6 text-center text-xs text-gray-500">
+              No rate limit incidents recorded. All sender accounts operating within allocated thresholds.
+            </div>
+          ) : (
+            notifications.map((n: any, idx: number) => (
+              <div key={idx} className="p-4 px-6 flex items-center justify-between hover:bg-white/[0.02]">
+                <div className="space-y-0.5">
+                  <p className="text-xs font-semibold text-gray-200">{n.message || 'Sender rate limit exceeded'}</p>
+                  <p className="text-[11px] text-gray-500 font-mono">
+                    Sender: {n.senderEmail} • Rescheduled {n.rescheduledCount} pending email(s)
+                  </p>
                 </div>
-                <p className="text-xs text-gray-600 pl-4">{notif.description}</p>
-                <div className="pl-4 flex items-center gap-2">
-                  <span className="inline-flex text-[10px] font-medium bg-amber-50 text-amber-800 border border-amber-200 px-2 py-0.5 rounded-md">
-                    {notif.notice}
-                  </span>
-                  <span className="text-[11px] text-gray-400 font-mono">Window: {notif.windowKey}</span>
-                </div>
+                <span className="text-[10px] font-mono text-gray-400">
+                  {n.createdAt ? new Date(n.createdAt).toLocaleTimeString() : 'Just now'}
+                </span>
               </div>
-            ))}
-          </div>
-        )}
+            ))
+          )}
+        </div>
       </div>
     </div>
   );

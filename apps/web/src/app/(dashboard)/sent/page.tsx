@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { emailsApi } from '@/lib/api';
-import { Send, RefreshCw, ExternalLink, CheckCircle, XCircle } from 'lucide-react';
+import { Send, RefreshCw, ExternalLink, CheckCircle2, XCircle, ChevronLeft, ChevronRight, Mail } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { format } from 'date-fns';
 
@@ -21,7 +21,7 @@ export default function SentEmailsPage() {
       setTotalPages(res.meta?.totalPages || 1);
       setTotalCount(res.meta?.total || 0);
     } catch {
-      toast.error('Failed to load sent emails');
+      toast.error('Failed to load sent emails history');
     } finally {
       setLoading(false);
     }
@@ -32,85 +32,107 @@ export default function SentEmailsPage() {
   }, [page]);
 
   return (
-    <div className="space-y-6 max-w-6xl mx-auto">
+    <div className="space-y-6 max-w-7xl mx-auto selection:bg-brand-500/30">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Sent Emails</h1>
-          <p className="text-sm text-gray-500 mt-1">
-            {totalCount} email{totalCount === 1 ? '' : 's'} dispatched via SMTP with audit verification.
+          <div className="flex items-center gap-2 mb-1">
+            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+            <span className="text-[11px] font-mono uppercase tracking-widest text-emerald-400 font-semibold">
+              Delivered Registry
+            </span>
+          </div>
+          <h1 className="text-3xl font-extrabold text-white tracking-tight">
+            Sent History & Audit
+          </h1>
+          <p className="text-xs md:text-sm text-gray-400 mt-1">
+            {totalCount} email{totalCount === 1 ? '' : 's'} dispatched through configured SMTP relays with transactional logging.
           </p>
         </div>
+
         <button
           onClick={() => loadSent(page)}
-          className="flex items-center gap-2 px-3 py-1.5 text-xs font-semibold text-gray-700 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 shadow-sm transition-all"
+          disabled={loading}
+          className="flex items-center gap-2 px-3.5 py-2 text-xs font-semibold text-gray-300 bg-dark-900 border border-white/[0.08] rounded-xl hover:bg-dark-850 hover:text-white transition-all shadow-card focus:outline-none focus:ring-2 focus:ring-brand-500/40"
         >
-          <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
-          <span>Refresh</span>
+          <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin text-brand-400' : 'text-gray-400'}`} />
+          <span>Refresh History</span>
         </button>
       </div>
 
-      {/* Table */}
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-card overflow-hidden">
+      {/* Main Table Card */}
+      <div className="bg-dark-900 rounded-2xl border border-white/[0.08] shadow-card overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm">
-            <thead className="bg-gray-50 border-b border-gray-100 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+          <table className="w-full text-left text-xs">
+            <thead className="bg-dark-950/60 border-b border-white/[0.07] text-[10px] font-mono font-semibold text-gray-400 uppercase tracking-widest">
               <tr>
-                <th className="px-6 py-3">Recipient</th>
-                <th className="px-6 py-3">Subject</th>
-                <th className="px-6 py-3">Sender</th>
-                <th className="px-6 py-3">Sent At</th>
-                <th className="px-6 py-3">Status</th>
-                <th className="px-6 py-3 text-right">Ethereal Preview</th>
+                <th className="px-6 py-3.5">Recipient</th>
+                <th className="px-6 py-3.5">Campaign Subject</th>
+                <th className="px-6 py-3.5">Sender</th>
+                <th className="px-6 py-3.5">Dispatched At</th>
+                <th className="px-6 py-3.5">Delivery Status</th>
+                <th className="px-6 py-3.5 text-right">Ethereal Sandbox</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-50">
+            <tbody className="divide-y divide-white/[0.04]">
               {emails.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-6 py-12 text-center text-sm text-gray-400">
-                    No sent emails yet. Compose and schedule your first email!
+                  <td colSpan={6} className="px-6 py-16 text-center space-y-3">
+                    <div className="w-12 h-12 mx-auto rounded-2xl bg-white/[0.04] border border-white/[0.08] flex items-center justify-center text-gray-400">
+                      <Mail className="w-5 h-5 text-emerald-400/80" />
+                    </div>
+                    <p className="text-sm font-semibold text-gray-300">
+                      No sent dispatches recorded yet.
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      Dispatched emails and Ethereal preview links will appear here immediately after delivery.
+                    </p>
                   </td>
                 </tr>
               ) : (
                 emails.map((email: any) => (
-                  <tr key={email.id} className="hover:bg-gray-50/70 transition-colors">
-                    <td className="px-6 py-4 font-medium text-gray-900">{email.recipientEmail}</td>
-                    <td className="px-6 py-4 text-gray-600 max-w-xs truncate">{email.subject}</td>
-                    <td className="px-6 py-4 text-gray-500 text-xs">
+                  <tr key={email.id} className="hover:bg-white/[0.02] transition-colors group">
+                    <td className="px-6 py-4 font-mono font-medium text-gray-100">
+                      {email.recipientEmail}
+                    </td>
+                    <td className="px-6 py-4 text-gray-300 font-sans max-w-xs truncate font-medium">
+                      {email.subject}
+                    </td>
+                    <td className="px-6 py-4 text-gray-400 font-mono text-[11px]">
                       {email.sender?.name || email.sender?.email}
                     </td>
-                    <td className="px-6 py-4 text-gray-500 text-xs whitespace-nowrap">
+                    <td className="px-6 py-4 text-gray-400 font-mono text-[11px] whitespace-nowrap">
                       {email.sentAt ? format(new Date(email.sentAt), 'MMM d, yyyy HH:mm:ss') : '-'}
                     </td>
                     <td className="px-6 py-4">
                       <span
-                        className={`inline-flex items-center gap-1.5 text-xs font-medium px-2 py-0.5 rounded-full ${
+                        className={`inline-flex items-center gap-1.5 text-[10px] font-mono uppercase font-semibold px-2.5 py-0.5 rounded-full border ${
                           email.status === 'SENT'
-                            ? 'bg-green-50 text-green-700'
-                            : 'bg-red-50 text-red-700'
+                            ? 'bg-emerald-500/10 text-emerald-300 border-emerald-500/30'
+                            : 'bg-rose-500/10 text-rose-300 border-rose-500/30'
                         }`}
                       >
                         {email.status === 'SENT' ? (
-                          <CheckCircle className="w-3 h-3" />
+                          <CheckCircle2 className="w-3 h-3 text-emerald-400" />
                         ) : (
-                          <XCircle className="w-3 h-3" />
+                          <XCircle className="w-3 h-3 text-rose-400" />
                         )}
-                        {email.status}
+                        <span>{email.status}</span>
                       </span>
                     </td>
                     <td className="px-6 py-4 text-right">
-                      {email.etherealPreviewUrl ? (
+                      {email.etherealUrl ? (
                         <a
-                          href={email.etherealPreviewUrl}
+                          href={email.etherealUrl}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1 text-xs font-medium text-brand-600 hover:text-brand-700 hover:underline"
+                          className="inline-flex items-center gap-1.5 px-3 py-1 text-[11px] font-mono font-semibold text-brand-300 hover:text-white bg-brand-500/10 hover:bg-brand-500/20 rounded-lg border border-brand-500/25 transition-all"
                         >
-                          <span>View Email</span>
+                          <span>Inspect Email</span>
                           <ExternalLink className="w-3 h-3" />
                         </a>
                       ) : (
-                        <span className="text-xs text-gray-400">—</span>
+                        <span className="text-[11px] font-mono text-gray-600">SMTP Direct</span>
                       )}
                     </td>
                   </tr>
@@ -120,26 +142,26 @@ export default function SentEmailsPage() {
           </table>
         </div>
 
-        {/* Pagination */}
+        {/* Pagination Bar */}
         {totalPages > 1 && (
-          <div className="px-6 py-3 border-t border-gray-100 flex items-center justify-between text-xs text-gray-500">
-            <span>
-              Page {page} of {totalPages}
+          <div className="px-6 py-3 border-t border-white/[0.06] flex items-center justify-between text-xs text-gray-400 bg-dark-950/40">
+            <span className="font-mono text-[11px]">
+              Page {page} of {totalPages} ({totalCount} total dispatched)
             </span>
-            <div className="flex gap-2">
+            <div className="flex items-center gap-2">
               <button
                 disabled={page <= 1}
-                onClick={() => setPage((p) => Math.max(1, p - 1))}
-                className="px-3 py-1 rounded bg-gray-50 border border-gray-200 disabled:opacity-40"
+                onClick={() => setPage(page - 1)}
+                className="p-1 rounded-lg hover:bg-white/[0.06] text-gray-300 disabled:opacity-40 disabled:cursor-not-allowed"
               >
-                Previous
+                <ChevronLeft className="w-4 h-4" />
               </button>
               <button
                 disabled={page >= totalPages}
-                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                className="px-3 py-1 rounded bg-gray-50 border border-gray-200 disabled:opacity-40"
+                onClick={() => setPage(page + 1)}
+                className="p-1 rounded-lg hover:bg-white/[0.06] text-gray-300 disabled:opacity-40 disabled:cursor-not-allowed"
               >
-                Next
+                <ChevronRight className="w-4 h-4" />
               </button>
             </div>
           </div>

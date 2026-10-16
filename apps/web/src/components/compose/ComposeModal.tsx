@@ -1,7 +1,19 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { X, UploadCloud, Calendar, Clock, Send, Check, AlertCircle } from 'lucide-react';
+import {
+  X,
+  UploadCloud,
+  Clock,
+  Send,
+  Check,
+  Zap,
+  Eye,
+  Edit3,
+  FileText,
+  AlertCircle,
+  ShieldCheck,
+} from 'lucide-react';
 import { sendersApi, schedulesApi } from '@/lib/api';
 import toast from 'react-hot-toast';
 
@@ -21,12 +33,12 @@ export function ComposeModal({ isOpen, onClose, onSuccess }: ComposeModalProps) 
   const [body, setBody] = useState('');
   const [scheduleType, setScheduleType] = useState<'now' | 'later'>('now');
   const [scheduledDateTime, setScheduledDateTime] = useState('');
+  const [activeTab, setActiveTab] = useState<'compose' | 'preview'>('compose');
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
       loadSenders();
-      // Default to 1 hour from now for "later"
       const d = new Date(Date.now() + 60 * 60 * 1000);
       d.setMinutes(0, 0, 0);
       setScheduledDateTime(d.toISOString().slice(0, 16));
@@ -56,7 +68,7 @@ export function ComposeModal({ isOpen, onClose, onSuccess }: ComposeModalProps) 
         validCount: parsed.validCount,
         duplicates: parsed.duplicates,
       });
-      toast.success(`Found ${parsed.validCount} valid recipients in ${file.name}`);
+      toast.success(`Loaded ${parsed.validCount} valid recipients from ${file.name}`);
     } catch {
       toast.error('Failed to parse recipient file');
       setUploadedFile(null);
@@ -68,21 +80,20 @@ export function ComposeModal({ isOpen, onClose, onSuccess }: ComposeModalProps) 
     e.preventDefault();
 
     if (!selectedSenderId) {
-      toast.error('Please select a sender');
+      toast.error('Please select an active sender account');
       return;
     }
 
     if (!subject.trim()) {
-      toast.error('Subject is required');
+      toast.error('Subject line is required');
       return;
     }
 
     if (!body.trim()) {
-      toast.error('Body is required');
+      toast.error('Email body content is required');
       return;
     }
 
-    // Resolve recipients
     let recipientsList: string[] = [];
     if (!uploadedFile) {
       recipientsList = recipientsInput
@@ -91,12 +102,11 @@ export function ComposeModal({ isOpen, onClose, onSuccess }: ComposeModalProps) 
         .filter((e) => Boolean(e) && e.includes('@'));
 
       if (recipientsList.length === 0) {
-        toast.error('Please enter at least one valid recipient email or upload a CSV');
+        toast.error('Please specify valid recipient emails or upload a CSV');
         return;
       }
     }
 
-    // Determine start timestamp
     const startAt =
       scheduleType === 'now'
         ? new Date().toISOString()
@@ -115,11 +125,10 @@ export function ComposeModal({ isOpen, onClose, onSuccess }: ComposeModalProps) 
 
       toast.success(
         scheduleType === 'now'
-          ? 'Email dispatch started!'
-          : 'Email campaign scheduled!'
+          ? 'Email dispatch enqueued to BullMQ!'
+          : 'Email campaign scheduled successfully!'
       );
 
-      // Reset and close
       setSubject('');
       setBody('');
       setRecipientsInput('');
@@ -137,193 +146,272 @@ export function ComposeModal({ isOpen, onClose, onSuccess }: ComposeModalProps) 
 
   if (!isOpen) return null;
 
+  const currentSender = senders.find((s) => s.id === selectedSenderId);
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-fade-in">
-      <div className="bg-white w-full max-w-2xl rounded-2xl shadow-modal overflow-hidden border border-gray-100 flex flex-col max-h-[92vh]">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-md animate-fade-in selection:bg-brand-500/30 font-sans">
+      <div className="bg-dark-900 w-full max-w-2xl rounded-2xl shadow-modal overflow-hidden border border-white/[0.1] flex flex-col max-h-[92vh] relative">
+        {/* Ambient Top Glow */}
+        <div className="absolute top-0 left-1/4 right-1/4 h-[1px] bg-gradient-to-r from-transparent via-brand-500/50 to-transparent pointer-events-none" />
+
         {/* Modal Header */}
-        <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="w-2.5 h-2.5 rounded-full bg-brand-500" />
-            <h3 className="font-semibold text-gray-900 text-base">New Email Campaign</h3>
+        <div className="px-6 py-4 border-b border-white/[0.07] flex items-center justify-between bg-dark-950/60">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-lg bg-brand-500/20 border border-brand-500/30 flex items-center justify-center text-brand-300">
+              <Zap className="w-4 h-4" />
+            </div>
+            <div>
+              <h3 className="font-bold text-white text-base tracking-tight">New Dispatch Campaign</h3>
+              <p className="text-[11px] text-gray-400 font-mono">Calibrated via Outbox Queue</p>
+            </div>
           </div>
-          <button
-            onClick={onClose}
-            className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
-          >
-            <X className="w-5 h-5" />
-          </button>
+
+          <div className="flex items-center gap-2">
+            {/* Tab switch */}
+            <div className="flex p-0.5 rounded-lg bg-dark-800 border border-white/[0.06] text-xs">
+              <button
+                type="button"
+                onClick={() => setActiveTab('compose')}
+                className={`flex items-center gap-1.5 px-3 py-1 rounded-md font-medium transition-all ${
+                  activeTab === 'compose'
+                    ? 'bg-brand-600 text-white shadow-sm'
+                    : 'text-gray-400 hover:text-white'
+                }`}
+              >
+                <Edit3 className="w-3.5 h-3.5" />
+                <span>Composer</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab('preview')}
+                className={`flex items-center gap-1.5 px-3 py-1 rounded-md font-medium transition-all ${
+                  activeTab === 'preview'
+                    ? 'bg-brand-600 text-white shadow-sm'
+                    : 'text-gray-400 hover:text-white'
+                }`}
+              >
+                <Eye className="w-3.5 h-3.5" />
+                <span>Preview</span>
+              </button>
+            </div>
+
+            <button
+              onClick={onClose}
+              className="p-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-white/[0.06] transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
         </div>
 
         {/* Modal Form */}
         <form onSubmit={handleSubmit} className="p-6 space-y-4 overflow-y-auto flex-1">
-          {/* Sender Dropdown */}
-          <div>
-            <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-1.5">
-              From (Sender Account)
-            </label>
-            <select
-              value={selectedSenderId}
-              onChange={(e) => setSelectedSenderId(e.target.value)}
-              className="w-full px-3 py-2 text-sm bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-500"
-            >
-              {senders.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.name} ({s.email}) {s.isEthereal ? '— [Ethereal Test SMTP]' : ''}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Recipients / File Upload */}
-          <div>
-            <div className="flex items-center justify-between mb-1.5">
-              <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                To (Recipients)
-              </label>
-              <label
-                htmlFor="file-upload"
-                className="text-xs font-medium text-brand-600 hover:text-brand-700 cursor-pointer flex items-center gap-1"
-              >
-                <UploadCloud className="w-3.5 h-3.5" />
-                Upload CSV / TXT
-              </label>
-              <input
-                id="file-upload"
-                type="file"
-                accept=".csv,.txt"
-                onChange={handleFileUpload}
-                className="hidden"
-              />
-            </div>
-
-            {uploadedFile ? (
-              <div className="flex items-center justify-between p-3 rounded-xl bg-brand-50 border border-brand-200 text-sm">
-                <div className="flex items-center gap-2 text-brand-800">
-                  <Check className="w-4 h-4 text-brand-600" />
-                  <span className="font-medium">{uploadedFile.name}</span>
-                  {fileStats && (
-                    <span className="text-xs text-brand-700">
-                      ({fileStats.validCount} valid emails)
+          {activeTab === 'compose' ? (
+            <>
+              {/* Sender Select */}
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="block text-xs font-mono font-semibold text-gray-300 uppercase tracking-wider">
+                    From (Sender Identity)
+                  </label>
+                  {currentSender && (
+                    <span className="text-[11px] font-mono text-emerald-400">
+                      Rate: {currentSender.maxEmailsPerHour || 200}/hr • Delay: {currentSender.minDelayMs || 2000}ms
                     </span>
                   )}
                 </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setUploadedFile(null);
-                    setFileStats(null);
-                  }}
-                  className="text-brand-600 hover:text-brand-800 p-1"
+                <select
+                  value={selectedSenderId}
+                  onChange={(e) => setSelectedSenderId(e.target.value)}
+                  className="w-full px-3.5 py-2.5 text-xs font-mono bg-dark-850 border border-white/[0.08] rounded-xl text-gray-200 focus:outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
                 >
-                  <X className="w-4 h-4" />
-                </button>
+                  {senders.map((s) => (
+                    <option key={s.id} value={s.id} className="bg-dark-900 text-gray-200">
+                      {s.name} ({s.email}) {s.isEthereal ? '• [Auto Ethereal SMTP]' : ''}
+                    </option>
+                  ))}
+                </select>
               </div>
-            ) : (
-              <textarea
-                value={recipientsInput}
-                onChange={(e) => setRecipientsInput(e.target.value)}
-                placeholder="sarah@example.com, john@domain.io or paste multiple emails"
-                rows={2}
-                className="w-full px-3 py-2 text-sm bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-500"
-              />
-            )}
-          </div>
 
-          {/* Subject */}
-          <div>
-            <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-1.5">
-              Subject
-            </label>
-            <input
-              type="text"
-              value={subject}
-              onChange={(e) => setSubject(e.target.value)}
-              placeholder="e.g. Follow up on our meeting regarding ReachInbox"
-              className="w-full px-3 py-2 text-sm bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-500"
-            />
-          </div>
+              {/* Recipients Input */}
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="block text-xs font-mono font-semibold text-gray-300 uppercase tracking-wider">
+                    To (Recipients Target)
+                  </label>
+                  <label
+                    htmlFor="file-upload-modal"
+                    className="text-xs font-mono font-medium text-brand-300 hover:text-brand-200 cursor-pointer flex items-center gap-1.5 bg-brand-500/10 border border-brand-500/20 px-2 py-0.5 rounded-md transition-colors"
+                  >
+                    <UploadCloud className="w-3.5 h-3.5" />
+                    <span>Upload CSV / TXT</span>
+                  </label>
+                  <input
+                    id="file-upload-modal"
+                    type="file"
+                    accept=".csv,.txt"
+                    onChange={handleFileUpload}
+                    className="hidden"
+                  />
+                </div>
 
-          {/* Email Body */}
-          <div>
-            <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-1.5">
-              Message Body (HTML supported)
-            </label>
-            <textarea
-              value={body}
-              onChange={(e) => setBody(e.target.value)}
-              placeholder="Hi there,<br><br>We wanted to reach out and follow up..."
-              rows={6}
-              className="w-full px-3 py-2 text-sm bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-500 font-mono"
-            />
-          </div>
+                {uploadedFile ? (
+                  <div className="flex items-center justify-between p-3.5 rounded-xl bg-brand-500/10 border border-brand-500/30 text-xs font-mono">
+                    <div className="flex items-center gap-2.5 text-brand-200">
+                      <Check className="w-4 h-4 text-emerald-400" />
+                      <span className="font-semibold text-white">{uploadedFile.name}</span>
+                      {fileStats && (
+                        <span className="text-gray-400">
+                          ({fileStats.validCount} valid entries, {fileStats.duplicates} dupes omitted)
+                        </span>
+                      )}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setUploadedFile(null);
+                        setFileStats(null);
+                      }}
+                      className="text-gray-400 hover:text-white p-1"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                ) : (
+                  <textarea
+                    value={recipientsInput}
+                    onChange={(e) => setRecipientsInput(e.target.value)}
+                    placeholder="sarah@enterprise.io, david@growth.com (comma or newline separated)"
+                    rows={2}
+                    className="w-full px-3.5 py-2.5 text-xs font-mono bg-dark-850 border border-white/[0.08] rounded-xl text-gray-200 placeholder-gray-500 focus:outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
+                  />
+                )}
+              </div>
 
-          {/* Scheduling Timing */}
-          <div className="p-4 rounded-xl bg-gray-50 border border-gray-100 space-y-3">
-            <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wider">
-              Delivery Schedule
-            </label>
-            <div className="flex gap-4">
-              <label className="flex items-center gap-2 cursor-pointer text-sm font-medium text-gray-700">
+              {/* Subject */}
+              <div>
+                <label className="block text-xs font-mono font-semibold text-gray-300 uppercase tracking-wider mb-1.5">
+                  Subject Line
+                </label>
                 <input
-                  type="radio"
-                  name="scheduleType"
-                  value="now"
-                  checked={scheduleType === 'now'}
-                  onChange={() => setScheduleType('now')}
-                  className="text-brand-500 focus:ring-brand-500"
+                  type="text"
+                  value={subject}
+                  onChange={(e) => setSubject(e.target.value)}
+                  placeholder="e.g. Schedule sync regarding ReachInbox deployment"
+                  className="w-full px-3.5 py-2.5 text-sm bg-dark-850 border border-white/[0.08] rounded-xl text-gray-200 placeholder-gray-500 focus:outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
                 />
-                <span>Send Immediately (with rate limiting & delays)</span>
-              </label>
+              </div>
 
-              <label className="flex items-center gap-2 cursor-pointer text-sm font-medium text-gray-700">
-                <input
-                  type="radio"
-                  name="scheduleType"
-                  value="later"
-                  checked={scheduleType === 'later'}
-                  onChange={() => setScheduleType('later')}
-                  className="text-brand-500 focus:ring-brand-500"
+              {/* Message Body */}
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="block text-xs font-mono font-semibold text-gray-300 uppercase tracking-wider">
+                    Message Body (HTML Supported)
+                  </label>
+                  <span className="text-[10px] font-mono text-gray-500">HTML tags allowed</span>
+                </div>
+                <textarea
+                  value={body}
+                  onChange={(e) => setBody(e.target.value)}
+                  placeholder="Hi there,<br><br>Excited to connect with you regarding our enterprise email infrastructure..."
+                  rows={5}
+                  className="w-full px-3.5 py-2.5 text-xs font-mono bg-dark-850 border border-white/[0.08] rounded-xl text-gray-200 placeholder-gray-500 focus:outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
                 />
-                <span>Schedule for Later</span>
-              </label>
+              </div>
+
+              {/* Timing & Delivery Options */}
+              <div className="p-4 rounded-xl bg-dark-850/80 border border-white/[0.07] space-y-3">
+                <label className="block text-xs font-mono font-semibold text-gray-300 uppercase tracking-wider">
+                  Dispatch Execution Strategy
+                </label>
+                <div className="flex flex-col sm:flex-row gap-4">
+                  <label className="flex items-center gap-2.5 cursor-pointer text-xs font-medium text-gray-300">
+                    <input
+                      type="radio"
+                      name="scheduleType"
+                      value="now"
+                      checked={scheduleType === 'now'}
+                      onChange={() => setScheduleType('now')}
+                      className="accent-brand-500"
+                    />
+                    <span>Stream Immediately (Rate-Governed)</span>
+                  </label>
+
+                  <label className="flex items-center gap-2.5 cursor-pointer text-xs font-medium text-gray-300">
+                    <input
+                      type="radio"
+                      name="scheduleType"
+                      value="later"
+                      checked={scheduleType === 'later'}
+                      onChange={() => setScheduleType('later')}
+                      className="accent-brand-500"
+                    />
+                    <span>Schedule Release Timestamp</span>
+                  </label>
+                </div>
+
+                {scheduleType === 'later' && (
+                  <div className="pt-2">
+                    <input
+                      type="datetime-local"
+                      value={scheduledDateTime}
+                      onChange={(e) => setScheduledDateTime(e.target.value)}
+                      className="px-3 py-2 text-xs font-mono bg-dark-900 border border-white/[0.1] rounded-lg text-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-500"
+                    />
+                  </div>
+                )}
+              </div>
+            </>
+          ) : (
+            /* Live HTML Preview Pane */
+            <div className="space-y-4">
+              <div className="p-4 rounded-xl bg-dark-850 border border-white/[0.06] space-y-2">
+                <p className="text-xs font-mono text-gray-400">
+                  <span className="text-gray-500">SUBJECT: </span>
+                  <span className="text-white font-semibold">{subject || '(No subject specified)'}</span>
+                </p>
+                <p className="text-xs font-mono text-gray-400">
+                  <span className="text-gray-500">SENDER: </span>
+                  <span className="text-brand-300">{currentSender?.name} &lt;{currentSender?.email}&gt;</span>
+                </p>
+              </div>
+
+              <div className="p-6 rounded-xl bg-white text-gray-900 min-h-[220px] shadow-sm text-sm">
+                {body ? (
+                  <div dangerouslySetInnerHTML={{ __html: body }} />
+                ) : (
+                  <div className="text-center text-gray-400 pt-10 text-xs">
+                    No message content entered in composer.
+                  </div>
+                )}
+              </div>
             </div>
+          )}
 
-            {scheduleType === 'later' && (
-              <div className="pt-2">
-                <input
-                  type="datetime-local"
-                  value={scheduledDateTime}
-                  onChange={(e) => setScheduledDateTime(e.target.value)}
-                  className="px-3 py-1.5 text-sm bg-white border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500"
-                />
-              </div>
-            )}
-          </div>
-
-          {/* Actions Footer */}
-          <div className="pt-4 flex items-center justify-end gap-3 border-t border-gray-100">
+          {/* Action Footer */}
+          <div className="pt-4 flex items-center justify-end gap-3 border-t border-white/[0.07]">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-xl transition-colors"
+              className="px-4 py-2 text-xs font-semibold text-gray-400 hover:text-white rounded-xl transition-colors"
             >
-              Cancel
+              Discard
             </button>
             <button
               type="submit"
               disabled={submitting}
-              className="flex items-center gap-2 px-5 py-2 text-sm font-semibold text-white bg-brand-500 hover:bg-brand-600 rounded-xl shadow-sm transition-all focus:outline-none focus:ring-2 focus:ring-brand-500 disabled:opacity-50"
+              className="flex items-center gap-2 px-6 py-2.5 text-xs font-semibold text-white bg-gradient-to-r from-brand-600 to-brand-500 hover:from-brand-500 hover:to-brand-400 rounded-xl shadow-glow transition-all active:scale-[0.98] disabled:opacity-50 border border-brand-400/30"
             >
               {submitting ? (
                 <>
-                  <span className="w-4 h-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                  <span>Enqueuing Jobs…</span>
+                  <span className="w-3.5 h-3.5 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                  <span>Enqueuing to Redis BullMQ…</span>
                 </>
               ) : (
                 <>
-                  <Send className="w-4 h-4" />
+                  <Send className="w-3.5 h-3.5" />
                   <span>
-                    {scheduleType === 'now' ? 'Send Campaign Now' : 'Schedule Campaign'}
+                    {scheduleType === 'now' ? 'Dispatch Campaign Now' : 'Lock & Schedule Dispatch'}
                   </span>
                 </>
               )}

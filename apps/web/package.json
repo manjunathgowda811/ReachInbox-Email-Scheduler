@@ -12,6 +12,7 @@
   "dependencies": {
     "@reachinbox/shared": "*",
     "@tanstack/react-query": "^5.17.19",
+    "@types/three": "^0.186.0",
     "axios": "^1.6.5",
     "date-fns": "^3.2.0",
     "lucide-react": "^0.312.0",
@@ -19,7 +20,8 @@
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-dropzone": "^14.2.3",
-    "react-hot-toast": "^2.4.1"
+    "react-hot-toast": "^2.4.1",
+    "three": "^0.186.1"
   },
   "devDependencies": {
     "@types/node": "^20.11.0",
@@ -31,7 +33,7 @@
     "typescript": "^5.3.3"
   },
   "optionalDependencies": {
-    "@next/swc-win32-x64-msvc": "14.2.35",
-    "@next/swc-linux-x64-gnu": "14.2.35"
+    "@next/swc-linux-x64-gnu": "14.2.35",
+    "@next/swc-win32-x64-msvc": "14.2.35"
   }
 }
