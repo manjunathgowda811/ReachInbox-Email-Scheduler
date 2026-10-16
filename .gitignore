@@ -58,3 +58,5 @@ prisma/migrations/dev.db
 # Uploads (temp)
 uploads/
 tmp/
+
+.vercel
